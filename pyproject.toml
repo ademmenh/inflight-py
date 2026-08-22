@@ -30,6 +30,7 @@ Issues = "https://github.com/user/inflight-py/issues"
 
 [project.optional-dependencies]
 dev = ["pytest", "pytest-asyncio"]
+bench = ["asyncpg", "valkey"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
