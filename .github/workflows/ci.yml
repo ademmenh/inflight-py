@@ -2,15 +2,20 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
     branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.11", "3.12", "3.13"]
+        python-version: ["3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -18,3 +23,40 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - run: pip install -e ".[dev]"
       - run: pytest
+
+  release:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: test
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install "python-semantic-release>=10,<11" "gitpython<3.1.60" build
+      - id: version
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          BEFORE=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          semantic-release version
+          AFTER=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -n "$AFTER" ] && [ "$BEFORE" != "$AFTER" ]; then
+            echo "tag=$AFTER" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - if: steps.version.outputs.tag != ''
+        run: |
+          git checkout ${{ steps.version.outputs.tag }}
+          python -m build
+      - if: steps.version.outputs.tag != ''
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true

@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "inflight"
+name = "inflight-py"
 version = "1.0.0"
 description = "Deduplicate concurrent requests by query_key"
 readme = "README.md"
@@ -38,3 +38,8 @@ testpaths = ["tests"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["inflight"]
+
+[tool.semantic_release]
+version_toml = ["pyproject.toml:project.version"]
+branch = "main"
+commit_message = "chore(release): v{version}"
